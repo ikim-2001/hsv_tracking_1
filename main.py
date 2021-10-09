@@ -41,14 +41,14 @@ def run(ip):
 
 
 if __name__ == "__main__":
+    global camera_index
 
-    thread1 = Thread(target=hsv_tracking)
-    thread1.start()
-
-    # name = input("please enter your mc username ")
     name = input('Please enter minecraft username: ')
     ip = input('Please enter ip address: ')
     our_uuid = get_uuid(name)
+
+    thread1 = Thread(target=complete_hsv())
+    thread1.start()
 
     thread = Thread(target=run, args=[ip])
     thread.start()

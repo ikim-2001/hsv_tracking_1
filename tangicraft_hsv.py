@@ -2,25 +2,31 @@ import cv2
 import numpy as np
 from tracker import *
 from grid_system import *
+
 # 480 640
 # dimensions of the screen
 
 # Create tracker object
 tracker = EuclideanDistTracker()
 
+
 def nothing(x):
     pass
+
 
 # p is the y coordinate and q is the x coordinate
 def stack_block(p, q):
     heights[p][q] += 1
 
+
 # if the [p][q] area does not see a block
 def reset_block(p, q):
     heights[p][q] = -1
 
+
 def get_height(p, q):
     return heights[p][q]
+
 
 def add_single_json(dict, q, p, r):
     if q not in dict.keys():
@@ -30,6 +36,7 @@ def add_single_json(dict, q, p, r):
     dict[q][r][p] = "ice"
     return dict
 
+
 def remove_single_json(dict, q, p, r):
     # if q in dict.keys():
     #     if r in dict[q].keys():
@@ -37,8 +44,31 @@ def remove_single_json(dict, q, p, r):
     # return dict
     dict[q][r][p] = 'air'
 
-# Open the camera
-cap = cv2.VideoCapture(1)
+
+
+
+#
+# def configure_camera():
+#     cap = cv2.VideoCapture(0)
+#     cap1 = cv2.VideoCapture(1)
+#
+#     ret, frame0 = cap.read()
+#     ret1, frame1 = cap1.read()
+#
+#     cv2.imshow('cam0', frame0)
+#     cv2.imshow('cam1', frame1)
+#
+#     key = cv2.waitKey(0)
+#
+#         # if key == ord('l'):
+#         #     break
+#         # if key == ord('p'):
+#         #     cv2.waitKey(-1)  # wait until any key is pressed
+#
+#     # cap.release()
+#     cap1.release()
+#     cv2.destroyAllWindows()
+
 
 # Create a window
 cv2.namedWindow('image')
@@ -56,7 +86,6 @@ cv2.createTrackbar('highS', 'image', 255, 255, nothing)
 cv2.createTrackbar('lowV', 'image', 0, 255, nothing)
 cv2.createTrackbar('highV', 'image', 255, 255, nothing)
 
-
 # INITIAL VARIABLES
 # key: id
 # value: (x, y, z) coordinates
@@ -69,9 +98,8 @@ xy_height = {}
 # list of permanent objects' IDs
 ids = []
 
-
 # used for dilation/erosion/gradients
-kernel = np.ones((3,3), np.uint8)
+kernel = np.ones((3, 3), np.uint8)
 
 # Creates an array that represents a topological graph.
 # Each point represents the height (in blocks) at that point
@@ -85,13 +113,12 @@ gone_counter = [[0 for a in range(height // side_length + 1)] for b in range(wid
 permanent_jsons = {}
 
 
-
 def hsv_tracking():
     global permanent_jsons
+    cap = cv2.VideoCapture(1)
     while (True):
 
         ret, frame = cap.read()
-
 
         # get current positions of the trackbars
         ilowH = cv2.getTrackbarPos('lowH', 'image')
@@ -137,7 +164,6 @@ def hsv_tracking():
 
         mask = blue_mask + purple_mask + green_mask + yellow_mask + orange_mask
 
-
         # Apply the mask on the image to extract the original color
         opening = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=22)
 
@@ -166,16 +192,16 @@ def hsv_tracking():
             min_area = 150
             if min_area <= area <= max_area:
                 # extract x,y,w,h coordinates from bounding a contour
-                x,y,w,h = cv2.boundingRect(cnt)
+                x, y, w, h = cv2.boundingRect(cnt)
 
                 # append these to the tracking program
                 detections.append([x, y, w, h])
 
                 # convert corner coordinates to center coordinates
-                x,y = grid.tc_to_center(x,y,w,h)
+                x, y = grid.tc_to_center(x, y, w, h)
 
                 # get relative indexes of the x and y coordinates
-                p,q = grid.get_center(x,y)
+                p, q = grid.get_center(x, y)
                 x_ = q * side_length + side_length // 2
                 y_ = p * side_length + side_length // 2
 
@@ -183,10 +209,10 @@ def hsv_tracking():
                 gone_counter[p][q] = 0
 
                 if (q, p) in xy_height.keys():
-                    text2 = f"z: {xy_height[(q,p)]}"
+                    text2 = f"z: {xy_height[(q, p)]}"
                     r = xy_height[(q, p)]
                     curr_jsons = add_single_json(curr_jsons, q, p, r)
-                    cv2.putText(copy, text2, (x_-15, y_+15), cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 0), 2)
+                    cv2.putText(copy, text2, (x_ - 15, y_ + 15), cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 0), 2)
 
                     # draw a square around the contour
                     grid.draw_squares(copy, p, q, r)
@@ -197,7 +223,7 @@ def hsv_tracking():
                     text2 = "z: -"
                     r = '-'
                     curr_jsons = add_single_json(curr_jsons, q, p, r)
-                    cv2.putText(copy, text2, (x_-15, y_ + 15), cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 0), 2)
+                    cv2.putText(copy, text2, (x_ - 15, y_ + 15), cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 0), 2)
 
                     # draw a square around the contour
                     grid.draw_squares(copy, p, q, 0)
@@ -205,7 +231,7 @@ def hsv_tracking():
                     cv2.putText(copy, text, (x_ - 20, y_), cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 0), 2)
 
                 text2 = f"current jsons: {curr_jsons}"
-                cv2.putText(copy, text2, (20,20), cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 0), 2)
+                cv2.putText(copy, text2, (20, 20), cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 0), 2)
 
         cv2.imshow('copy', copy)
 
@@ -214,9 +240,9 @@ def hsv_tracking():
         box_ids = tracker.update(detections)
 
         for box_id in box_ids:
-            x, y, w, h, n, id= box_id
+            x, y, w, h, n, id = box_id
             # Draw rectangle around the valid objects
-            cv2.rectangle(frame, (x-5, y-5), (x + w+5, y + h+5), (0, 255, 0), 2)
+            cv2.rectangle(frame, (x - 5, y - 5), (x + w + 5, y + h + 5), (0, 255, 0), 2)
             text = f"ID: {str(id)} cnt: {str(n)}"
             frame = cv2.putText(frame, text, (x, y - 15), cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 0), 2)
 
@@ -281,13 +307,14 @@ def hsv_tracking():
 
                 # this algorithm will work IF AND ONLY IF the contours are big enough (i.e. close enough to the camera)
                 dilated_circles = cv2.circle(dilated_circles, (y, x), 1, (255, 0, 0), -1)
-                dilated_circles = cv2.circle(dilated_circles, (y+hl, x+hl), 1, (255, 0, 0), -1)
+                dilated_circles = cv2.circle(dilated_circles, (y + hl, x + hl), 1, (255, 0, 0), -1)
                 dilated_circles = cv2.circle(dilated_circles, (y, x + hl), 1, (255, 0, 0), -1)
                 dilated_circles = cv2.circle(dilated_circles, (y + hl, x), 1, (255, 0, 0), -1)
 
-                if y < dilated.shape[0]-hl and x < dilated.shape[1]-hl:
+                if y < dilated.shape[0] - hl and x < dilated.shape[1] - hl:
                     # if contour not visible in box grid then increment te cone_counter by one per frame
-                    if int(dilated[y][x]) == 0 and int(dilated[y+hl][x+hl]) == 0 and int(dilated[y][x+hl]) == 0 and int(dilated[y+hl][x]) == 0:
+                    if int(dilated[y][x]) == 0 and int(dilated[y + hl][x + hl]) == 0 and int(
+                            dilated[y][x + hl]) == 0 and int(dilated[y + hl][x]) == 0:
                         gone_counter[p][q] += 1
                     else:
                         continue
@@ -319,7 +346,7 @@ def hsv_tracking():
                         while r > -1:
                             pos = perm_obj_vals.index((q, p, r))
                             desired_key = perm_obj_keys[pos]
-                        # test to see if permanent object is deleted
+                            # test to see if permanent object is deleted
                             print(f"deleting object # {desired_key}: ({q}, {p}, {r})")
                             print(f"perm obj before deleting: {permanent_objects}")
                             print(f"perm jsons before deleting: {permanent_jsons}")
@@ -335,18 +362,19 @@ def hsv_tracking():
                             r -= 1
         # cv2.imshow('dilated', dilated_circles)
 
-
         key = cv2.waitKey(1)
         if key == ord('l'):
             break
         if key == ord('p'):
             cv2.waitKey(-1)  # wait until any key is pressed
 
-
     print(f"[INFO] {len(permanent_objects)} permanent objects stored")
     print(permanent_objects)
 
     cap.release()
     cv2.destroyAllWindows()
+
+
 if __name__ == "__main__":
+    # configure_camera()
     hsv_tracking()
