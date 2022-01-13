@@ -1,0 +1,79 @@
+import numpy as np
+import cv2
+import tracker_2
+import time
+
+cap = cv2.VideoCapture(0)
+kernel = np.ones((3, 3), np.uint8)
+
+# Create a window
+cv2.namedWindow('image')
+
+def nothing(x):
+    pass
+
+# create trackbars for color change
+# these represent the Hue values
+cv2.createTrackbar('lowH', 'image', 0, 179, nothing)
+cv2.createTrackbar('highH', 'image', 179, 179, nothing)
+
+# saturation values
+cv2.createTrackbar('lowS', 'image', 0, 255, nothing)
+cv2.createTrackbar('highS', 'image', 255, 255, nothing)
+
+# value values
+cv2.createTrackbar('lowV', 'image', 0, 255, nothing)
+cv2.createTrackbar('highV', 'image', 255, 255, nothing)
+
+while(True):
+    ret, frame = cap.read()
+
+    ilowH = cv2.getTrackbarPos('lowH', 'image')
+    ihighH = cv2.getTrackbarPos('highH', 'image')
+    ilowS = cv2.getTrackbarPos('lowS', 'image')
+    ihighS = cv2.getTrackbarPos('highS', 'image')
+    ilowV = cv2.getTrackbarPos('lowV', 'image')
+    ihighV = cv2.getTrackbarPos('highV', 'image')
+
+    hsv1 = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    #lower_hsv = np.array([(105, 180, 0)])
+    #higher_hsv = np.array([(127, 255, 255)])
+    lower_hsv = np.array([(ilowH, ilowS, ilowV)])
+    higher_hsv = np.array([(ihighH, ihighS, ihighV)])
+    clear_mask = cv2.inRange(hsv1, lower_hsv, higher_hsv)
+
+    # Apply the mask on the image to extract the original color
+    opening = cv2.morphologyEx(clear_mask, cv2.MORPH_OPEN, kernel, iterations=15)
+    dilated = opening
+
+    cv2.imshow('dilated', dilated)
+    contours =  cv2.findContours(dilated,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)[-2]
+    rects = []
+    for c in contours:
+        if cv2.contourArea(c) > 800:
+            x,y,w,h = cv2.boundingRect(c)
+            rects.append((x,y,w,h))
+            cv2.rectangle(frame, (x - 5, y - 5), (x + w + 5, y + h + 5), (0, 255, 0), 2)
+    cv2.imshow('mask', clear_mask)
+    res = cv2.bitwise_and(frame, frame, mask=clear_mask)
+    copy = frame.copy()
+
+    edges = cv2.Canny(frame, 100, 200)
+    cv2.imshow('edges', edges)
+
+    objects = tracker_2.CentroidTracker()
+    # objects will be an ordered dictionary
+    # key = object ID; value = centroid xy values
+    objects = objects.update(rects)
+    for key, val in objects.items():
+        text = (f"{key}")
+        cv2.putText(copy, text, (val[0], val[1]),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+        cv2.circle(copy, (val[0], val[1]), 4, (0, 255, 0), -1)
+    cv2.imshow('res', res)
+    cv2.imshow('copy', copy)
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+cap.release()
+cv2.destroyAllWindows()
